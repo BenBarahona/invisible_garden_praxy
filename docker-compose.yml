@@ -1,0 +1,36 @@
+version: "3.8"
+services:
+  qdrant:
+    image: qdrant/qdrant:latest
+    build:
+      context: ./services/indexer
+    container_name: qdrant
+    ports: ["6333:6333"]
+    volumes:
+      - qdrant_storage:/qdrant/storage
+
+  vllm:
+    build:
+      context: ./services/vllm
+      dockerfile: Dockerfile.cpu
+    platform: linux/arm64/v8          
+    environment:
+      VLLM_TARGET_DEVICE: cpu
+      VLLM_CPU_KV_CACHE_SPACE: 8GiB
+    volumes:
+      - ./hf_models:/models
+    ports: ["8000:8000"]
+    
+  gateway:
+    build: 
+      context: ./services/gateway
+    container_name: gateway
+    env_file: .env
+    volumes:
+      - ./praxy/services/gateway:/gateway
+    ports: ["8080:8080"]
+    depends_on: [qdrant, vllm]
+
+volumes:
+  qdrant_storage:
+  
