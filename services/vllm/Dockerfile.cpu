@@ -1,33 +1,28 @@
-# Dockerfile.cpu
-FROM --platform=linux/arm64/v8 python:3.11-slim
+FROM python:3.10-slim
 
-# Install CPU PyTorch first (no CUDA)
-ARG TORCH_VER=2.4.0
-RUN pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu \
-    torch==${TORCH_VER}
+WORKDIR /app
 
-# Install vLLM CPU wheel + tools
-RUN pip install --no-cache-dir "vllm[cpu]" "huggingface_hub[cli]" git-lfs
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    git \
+    && rm -rf /var/lib/apt/lists/*
 
-# Helpful env for CPU runs
-ENV VLLM_TARGET_DEVICE=cpu \
-    VLLM_CPU_KV_CACHE_SPACE=8GiB
+# Install PyTorch CPU first
+RUN pip install torch --index-url https://download.pytorch.org/whl/cpu
 
-# Tiny startup probe to print versions + detected platform, then start server
-RUN printf '%s\n' \
-    'python - << "PY"' \
-    'import platform,importlib.metadata as m, torch, vllm' \
-    'from vllm import platforms' \
-    'print("Python:", platform.python_version(), "Arch:", platform.machine())' \
-    'print("Torch:", torch.__version__, "CUDA available?", torch.cuda.is_available())' \
-    'print("vLLM:", m.version("vllm"))' \
-    'print("Detected platform:", type(platforms.detect_platform()).__name__)' \
-    'PY' \
-    'exec python -m vllm.entrypoints.openai.api_server ' \
-    '  --model mistralai/Mistral-7B-Instruct-v0.3 ' \
-    '  --download-dir /models ' \
-    '  --port 8000' \
-    > /start.sh && chmod +x /start.sh
+# Install vLLM
+RUN pip install vllm
+
+# Copy and set permissions BEFORE switching user
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
+# Create non-root user and set ownership
+RUN useradd -m -u 1000 vllm-user && \
+    chown vllm-user:vllm-user /app/entrypoint.sh
+
+USER vllm-user
 
 EXPOSE 8000
-CMD ["/bin/sh","/start.sh"]
+
+ENTRYPOINT ["/app/entrypoint.sh"]

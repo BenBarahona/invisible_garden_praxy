@@ -9,17 +9,6 @@ services:
     volumes:
       - qdrant_storage:/qdrant/storage
 
-  vllm:
-    build:
-      context: ./services/vllm
-      dockerfile: Dockerfile.cpu
-    platform: linux/arm64/v8          
-    environment:
-      VLLM_TARGET_DEVICE: cpu
-      VLLM_CPU_KV_CACHE_SPACE: 8GiB
-    volumes:
-      - ./hf_models:/models
-    ports: ["8000:8000"]
     
   gateway:
     build: 
@@ -29,7 +18,8 @@ services:
     volumes:
       - ./praxy/services/gateway:/gateway
     ports: ["8080:8080"]
-    depends_on: [qdrant, vllm]
+    depends_on: [qdrant]
+
 
 volumes:
   qdrant_storage:
