@@ -1,4 +1,3 @@
-from fastapi import Depends
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,16 +17,16 @@ async def get_or_create_user(session: AsyncSession, external_id: str):
     
     user = User(external_id=external_id)
     session.add(user)
-    # try:
-    await session.commit()
-    """ except IntegrityError as ex:
+    try:
+        await session.commit()
+    except IntegrityError as ex:
         print("IntegrityError:", ex)
         await session.rollback()
         res = await session.execute(
             select(User).where(User.external_id == external_id)
         )
         user = res.scalar_one()
-        return user """
+        return user
 
     await session.refresh(user)
 
@@ -41,12 +40,3 @@ async def add_message(session: AsyncSession, user_id: int, message: dict):
     await session.refresh(msg)
     
     return {"id": msg.id}
-
-
-async def get_messages_by_user(session: AsyncSession, user_id: int):
-    res = await session.execute(
-        select(Message).where(Message.user_id == user_id).order_by(Message.created_at)
-    )
-    messages = res.scalars().all()
-    
-    return messages

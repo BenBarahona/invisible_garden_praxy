@@ -1,6 +1,8 @@
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db.tx import get_or_create_user, get_messages_by_user
+from db.tx import get_or_create_user
+from db.models import Message, User
 
 
 async def build_conversation(session: AsyncSession, external_id: str) -> list[dict]:
@@ -11,4 +13,22 @@ async def build_conversation(session: AsyncSession, external_id: str) -> list[di
     for msg in messages:
         conversation.append({"role": msg.role, "content": msg.content})
 
-    return conversation
+    return user.id, conversation
+
+
+async def get_messages_by_user(session: AsyncSession, user_id: int):
+    res = await session.execute(
+        select(Message).where(Message.user_id == user_id).order_by(Message.created_at)
+    )
+    messages = res.scalars().all()
+    
+    return messages
+
+
+async def get_messages_by_external_user(session: AsyncSession, external_id: str):
+    res = await session.execute(
+        select(Message).join(User).where(User.external_id == external_id).order_by(Message.created_at)
+    )
+    messages = res.scalars().all()
+
+    return messages

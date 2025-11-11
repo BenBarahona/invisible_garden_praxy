@@ -5,9 +5,9 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from typing import Annotated
-from controller import build_conversation
+from controller import build_conversation, get_messages_by_external_user
 
-from db.models import Base, Message
+from db.models import Base
 from db.db import engine, get_session
 from db.tx import add_message
 
@@ -44,22 +44,28 @@ async def feedback(prompt: UserPrompt, db: Annotated[AsyncSession, Depends(get_s
         api_key=os.environ.get("TOGETHER_API_KEY"),
     )
     
-    conversation = await build_conversation(session=db, external_id=prompt.user_id)
+    user_id, conversation = await build_conversation(session=db, external_id=prompt.user_id)
     conversation.append({"role": "user", "content": prompt.question})
 
-    """ response = client.chat.completions.create(
+    response = client.chat.completions.create(
         model="meta-llama/Llama-3.3-70B-Instruct-Turbo-Free",
         messages=[
             {"role": "system", "content": "You are an expert doctor on Cystitis in Non-Pregnant Adult Women."},
             *conversation
         ]
-    ) """
+    )
 
-    await add_message(db, prompt.user_id, {"role": "user", "content": prompt.question})
-    # await add_message(prompt.user_id, {"role": "assistant", "content": response.choices[0].message.content})
+    await add_message(db, user_id, {"role": "user", "content": prompt.question})
+    await add_message(db, user_id, {"role": "assistant", "content": response.choices[0].message.content})
 
+    conversation.append({"role": "assistant", "content": response.choices[0].message.content})
     # return response.choices[0].message.content
 
     return conversation
 
 
+@app.post("/get_chat_by_user/{user_id}")
+async def get_chat_by_user(user_id: str, db: Annotated[AsyncSession, Depends(get_session)]):
+    messages = await get_messages_by_external_user(session=db, external_id=user_id)
+
+    return messages
