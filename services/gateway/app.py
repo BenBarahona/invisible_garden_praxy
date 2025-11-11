@@ -1,8 +1,16 @@
 import os, time
-from xmlrpc import client
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from together import Together
 from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from typing import Annotated
+from controller import build_conversation
+
+from db.models import Base, Message
+from db.db import engine, get_session
+from db.tx import add_message
+
 
 from dotenv import load_dotenv
 ## from .rag import search, retrieved_docs_hash
@@ -13,14 +21,16 @@ load_dotenv()
 
 
 app = FastAPI()
-""" w3 = Web3(Web3.HTTPProvider(os.getenv('RPC_URL')))
-AUDIT_CONTRACT = Web3.to_checksum_address(os.getenv('AUDIT_CONTRACT'))
-AUDITOR_PK = bytes.fromhex(os.getenv('AUDITOR_PK_HEX'))
-POLICY = os.getenv('POLICY_VERSION', 'med-policy-v1')
-MODEL_ID = os.getenv('MODEL_ID','llama3') """
 
 class UserPrompt(BaseModel):
+    user_id: str
     question: str
+
+
+@app.on_event("startup")
+async def startup():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all) 
 
 
 @app.get("/")
@@ -28,34 +38,28 @@ async def get_query():
     return {"message": "Hello World"}
 
 
-@app.post("/ask_doctor_feedback")
-async def ask_doctor_feedback(prompt: UserPrompt):
+@app.post("/feedback")
+async def feedback(prompt: UserPrompt, db: Annotated[AsyncSession, Depends(get_session)]):
     client = Together(
         api_key=os.environ.get("TOGETHER_API_KEY"),
     )
+    
+    conversation = await build_conversation(session=db, external_id=prompt.user_id)
+    conversation.append({"role": "user", "content": prompt.question})
 
-    response = client.chat.completions.create(
+    """ response = client.chat.completions.create(
         model="meta-llama/Llama-3.3-70B-Instruct-Turbo-Free",
         messages=[
             {"role": "system", "content": "You are an expert doctor on Cystitis in Non-Pregnant Adult Women."},
-            {"role": "user", "content": prompt.question},
+            *conversation
         ]
-    )
+    ) """
 
-    return response.choices[0].message.content
+    await add_message(db, prompt.user_id, {"role": "user", "content": prompt.question})
+    # await add_message(prompt.user_id, {"role": "assistant", "content": response.choices[0].message.content})
+
+    # return response.choices[0].message.content
+
+    return conversation
 
 
-"""@app.post("/")
-async def handle(q: Query):    
-    # (TODO) Submit to audit contract on-chain
-
-    return {
-        'answer': answer,
-        'audit': {
-        'record_hash': '0x'+rec_hash.hex(),
-        'tx': txh.hex(),
-        'nonce': '0x'+nonce.hex(),
-        'timestamp': ts
-        },
-        'retrieval': [{'id': p.id, 'score': p.score} for p in points]
-    } """
