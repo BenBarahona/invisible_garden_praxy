@@ -18,7 +18,7 @@ def upload_conversational_data():
 
     train_file_resp = client.files.upload(file_path, check=True)
 
-    print("conversational", train_file_resp.id)  # Save this ID for starting your fine-tuning job
+    print("conversational", train_file_resp.id)  
 
 
 def upload_tokenized_data():
@@ -32,4 +32,4 @@ def upload_tokenized_data():
 
     train_file_resp = client.files.upload(file_path, check=True)
 
-    print("tokenized: ", train_file_resp.id)  # Save this ID for starting your fine-tuning job
+    print("tokenized: ", train_file_resp.id)  # file-76b220f4-8f0a-45c9-a4a9-d3011da5200f
