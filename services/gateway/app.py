@@ -47,8 +47,6 @@ async def feedback(prompt: UserPrompt, db: Annotated[AsyncSession, Depends(get_s
     user_id, conversation = await build_conversation(session=db, external_id=prompt.user_id)
     conversation.append({"role": "user", "content": prompt.question})
 
-    # model="meta-llama/Llama-3.3-70B-Instruct-Turbo-Free",
-    # meta-llama/Llama-3.3-70B-Instruct-Turbo
     # meta-llama/Meta-Llama-3.1-8B-Instruct-Reference
     response = client.chat.completions.create(
         model="jdestephen07_1f06/Meta-Llama-3.1-8B-Instruct-Reference-test_conv_8b-4fd4f33d",
