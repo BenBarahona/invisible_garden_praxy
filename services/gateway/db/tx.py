@@ -11,7 +11,6 @@ async def get_or_create_user(session: AsyncSession, external_id: str):
     )
 
     user = res.scalar_one_or_none()
-    print("user:", user)
     if user:
         return user
     
@@ -33,8 +32,8 @@ async def get_or_create_user(session: AsyncSession, external_id: str):
     return user
 
 
-async def add_message(session: AsyncSession, user_id: int, message: dict):
-    msg = Message(user_id=user_id, role=message["role"], content=message["content"])
+async def add_message(session: AsyncSession, user_id: int, message: dict, model_code: str = "t_tuned"):
+    msg = Message(user_id=user_id, model_code=model_code, role=message["role"], content=message["content"])
     session.add(msg)
     await session.commit()
     await session.refresh(msg)

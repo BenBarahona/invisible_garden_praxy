@@ -18,6 +18,7 @@ class Message(Base):
     __tablename__ = "messages"
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    model_code: Mapped[str] = mapped_column(String(50), default="default")
     role: Mapped[str] = mapped_column(String(20))   # "user" | "assistant"
     content: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(default=datetime.now, index=True)
