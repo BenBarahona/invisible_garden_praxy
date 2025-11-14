@@ -19,7 +19,7 @@ import SecurityIcon from "@mui/icons-material/Security";
 import VerifiedUserIcon from "@mui/icons-material/VerifiedUser";
 import { useSemaphore } from "@/hooks/useSemaphore";
 import { generateMembershipProof } from "@/lib/semaphore";
-import { getMedicalProfessionalsGroup } from "@/lib/groupManager";
+import { getMedicalProfessionalsGroupFromServer } from "@/lib/groupManager";
 import { syncCertificatesToServer } from "@/lib/certificateRegistry";
 import { setVerificationSession } from "@/lib/verificationSession";
 
@@ -58,9 +58,10 @@ export function SemaphoreIdentity() {
       );
       await syncCertificatesToServer();
 
-      // STEP 1: Get the approved medical professionals group
-      // This group represents your "whitelist"
-      const { group: medicalGroup } = await getMedicalProfessionalsGroup();
+      // STEP 1: Get the approved medical professionals group FROM SERVER
+      // This ensures we use the same group data that the server will use for verification
+      const { group: medicalGroup } =
+        await getMedicalProfessionalsGroupFromServer();
 
       // STEP 2: Check if user is in the group (optional check)
       // Note: This doesn't reveal identity, just checks if they CAN generate a proof
@@ -208,9 +209,9 @@ export function SemaphoreIdentity() {
             );
             await syncCertificatesToServer();
 
-            // STEP 1: Get the approved medical professionals group
+            // STEP 1: Get the approved medical professionals group FROM SERVER
             const { group: medicalGroup } =
-              await getMedicalProfessionalsGroup();
+              await getMedicalProfessionalsGroupFromServer();
 
             // STEP 2: Check if user is in the group
             const isInGroup = medicalGroup.members.includes(

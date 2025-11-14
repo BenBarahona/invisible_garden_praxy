@@ -98,3 +98,43 @@ export async function getCurrentGroupRoot(): Promise<bigint> {
   return root;
 }
 
+/**
+ * Fetch the medical professionals group from the server
+ * This ensures we use the server's version (from Vercel KV) instead of localStorage
+ */
+export async function getMedicalProfessionalsGroupFromServer(): Promise<{
+  group: Group;
+  root: bigint;
+}> {
+  try {
+    console.log("[CLIENT] Fetching group from server...");
+    
+    const response = await fetch("/api/get-group");
+    
+    if (!response.ok) {
+      throw new Error(`Server responded with ${response.status}`);
+    }
+    
+    const data = await response.json();
+    
+    if (!data.success) {
+      throw new Error(data.error || "Failed to get group from server");
+    }
+    
+    console.log("[CLIENT] Received group from server:", {
+      memberCount: data.memberCount,
+      root: data.root,
+    });
+    
+    // Convert string members back to BigInt
+    const members = data.members.map((m: string) => BigInt(m));
+    const group = new Group(members);
+    const root = BigInt(data.root);
+    
+    return { group, root };
+  } catch (error) {
+    console.error("[CLIENT] Failed to fetch group from server:", error);
+    throw error;
+  }
+}
+

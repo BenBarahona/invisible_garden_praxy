@@ -9,7 +9,7 @@ import {
   generateMembershipProof,
   getIdentityCommitment,
 } from "@/lib/semaphore";
-import { getMedicalProfessionalsGroup } from "@/lib/groupManager";
+import { getMedicalProfessionalsGroupFromServer } from "@/lib/groupManager";
 import {
   verifyProofWithAPI,
   VerificationResponse,
@@ -66,11 +66,12 @@ export function ProofVerification({
       const commitment = getIdentityCommitment(identity);
       console.log("Identity Commitment:", commitment.toString());
 
-      // Step 2: Get the approved medical professionals group
+      // Step 2: Get the approved medical professionals group FROM SERVER
+      // This ensures we use the same group data that the server will use for verification
       let group;
       let groupRoot;
       try {
-        const groupData = await getMedicalProfessionalsGroup();
+        const groupData = await getMedicalProfessionalsGroupFromServer();
         group = groupData.group;
         groupRoot = groupData.root;
         console.log("Group Root:", groupRoot.toString());
