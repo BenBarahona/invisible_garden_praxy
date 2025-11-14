@@ -21,12 +21,22 @@ export async function GET(req: NextRequest) {
     console.log("[SERVER] Returning group with", membersAsStrings.length, "members");
     console.log("[SERVER] Group root:", root.toString());
     
-    return NextResponse.json({
-      success: true,
-      members: membersAsStrings,
-      root: root.toString(),
-      memberCount: membersAsStrings.length,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        members: membersAsStrings,
+        root: root.toString(),
+        memberCount: membersAsStrings.length,
+      },
+      {
+        // Disable caching to ensure fresh data after certificate sync
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+        },
+      }
+    );
   } catch (error) {
     console.error("[SERVER] Get group error:", error);
     

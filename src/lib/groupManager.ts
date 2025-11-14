@@ -109,7 +109,14 @@ export async function getMedicalProfessionalsGroupFromServer(): Promise<{
   try {
     console.log("[CLIENT] Fetching group from server...");
     
-    const response = await fetch("/api/get-group");
+    // Add cache-busting parameter and disable browser cache
+    const timestamp = Date.now();
+    const response = await fetch(`/api/get-group?t=${timestamp}`, {
+      cache: 'no-store',
+      headers: {
+        'Cache-Control': 'no-cache',
+      },
+    });
     
     if (!response.ok) {
       throw new Error(`Server responded with ${response.status}`);
