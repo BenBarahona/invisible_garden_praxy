@@ -216,16 +216,17 @@ export function DebugInfo() {
                       {debugInfo.currentIdentity.isLinkedLocally ? (
                         <>
                           <li>
-                            Click "Force Sync to Server" above to sync your
-                            local certificate
+                            Click &quot;Force Sync to Server&quot; above to sync
+                            your local certificate
                           </li>
                           <li>Wait 2 seconds for sync to propagate</li>
-                          <li>Click "Refresh" to verify it worked</li>
+                          <li>Click &quot;Refresh&quot; to verify it worked</li>
                         </>
                       ) : (
                         <>
                           <li>
-                            Go to the "Certificate Registration" section above
+                            Go to the &quot;Certificate Registration&quot;
+                            section above
                           </li>
                           <li>
                             Register your certificate with your name and
