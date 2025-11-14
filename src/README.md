@@ -16,7 +16,13 @@ A modern Web3 frontend application built with Next.js 14, Material UI, and Frame
 
 For local development, no additional setup is required. The app will use file-based storage for certificates.
 
-For **Vercel deployment**, you need to set up Vercel KV (Redis). See [VERCEL_KV_SETUP.md](../VERCEL_KV_SETUP.md) for detailed instructions.
+For **Vercel deployment**, you need to set up Redis storage. See [VERCEL_KV_SETUP.md](../VERCEL_KV_SETUP.md) for detailed instructions.
+
+**Supported Redis Options:**
+
+- Redis Cloud (Recommended - more generous free tier)
+- Vercel KV (Built into Vercel Dashboard)
+- Any Redis-compatible service
 
 ### Installation
 
@@ -80,11 +86,14 @@ src/
 
 ### Deploying to Vercel
 
-1. **Set up Vercel KV** (Required for production)
+1. **Set up Redis Storage** (Required for production)
 
    - Follow the detailed guide: [VERCEL_KV_SETUP.md](../VERCEL_KV_SETUP.md)
-   - Create a KV database in Vercel Dashboard
-   - Connect it to your project
+   - **Option A**: Use Redis Cloud (recommended)
+     - Add `REDIS_URL` environment variable to Vercel
+   - **Option B**: Use Vercel KV
+     - Create KV database in Vercel Dashboard
+     - Connect it to your project
 
 2. **Deploy**
 
@@ -96,14 +105,17 @@ src/
 3. **Verify**
    - Check that certificates sync properly
    - Test proof verification
-   - Monitor logs for `[STORAGE] Using Vercel KV`
+   - Monitor logs for `[STORAGE] Using backend: redis` or `[STORAGE] Using backend: vercel-kv`
 
-### Local vs Production Storage
+### Storage Backend Detection
 
-- **Local Development**: Uses file-based storage (`linked_certificates_server.json`)
-- **Vercel Production**: Uses Vercel KV (Redis) - required for serverless deployment
+The app automatically detects and uses the appropriate storage backend:
 
-The app automatically detects and uses the appropriate storage backend.
+- **Local Development**: File-based storage (`linked_certificates_server.json`) - zero config
+- **Vercel with Redis Cloud**: Standard Redis via `ioredis` (if `REDIS_URL` is set)
+- **Vercel with Vercel KV**: REST API via `@vercel/kv` (if `KV_REST_API_URL` is set)
+
+No code changes needed - it just works! ✨
 
 ## Next Steps
 

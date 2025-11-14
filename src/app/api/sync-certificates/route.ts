@@ -47,8 +47,18 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     console.error("[SERVER] Sync error:", error);
+    
+    const errorMessage = error instanceof Error ? error.message : "Failed to sync certificates";
+    const errorDetails = error instanceof Error ? error.stack : String(error);
+    
+    console.error("[SERVER] Error details:", errorDetails);
+    
     return NextResponse.json(
-      { success: false, error: "Failed to sync certificates" },
+      { 
+        success: false, 
+        error: errorMessage,
+        details: process.env.NODE_ENV === "development" ? errorDetails : undefined,
+      },
       { status: 500 }
     );
   }
