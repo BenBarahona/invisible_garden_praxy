@@ -101,9 +101,9 @@ function ChatContent() {
                 Welcome, Verified Medical Professional!
               </h2>
               <p className="text-gray-600 mb-4">
-                You've successfully proven your credentials using zero-knowledge
-                proofs. Your identity remains private while your group
-                membership has been verified.
+                You&apos;ve successfully proven your credentials using
+                zero-knowledge proofs. Your identity remains private while your
+                group membership has been verified.
               </p>
 
               {/* Verification Details */}
@@ -302,8 +302,8 @@ function ChatContent() {
                 How Zero-Knowledge Verification Works
               </h4>
               <p className="text-blue-800 text-sm">
-                You gained access to this chat by proving you're a member of the
-                approved medical professionals group{" "}
+                You gained access to this chat by proving you&apos;re a member
+                of the approved medical professionals group{" "}
                 <strong>without revealing your identity</strong>. The system
                 only knows that you belong to the group, not who you are
                 specifically. This ensures both security and privacy.

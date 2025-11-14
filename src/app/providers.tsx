@@ -22,8 +22,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
           logo: "",
         },
         embeddedWallets: {
-          createOnLogin: "users-without-wallets",
-          requireUserPasswordOnCreate: false,
+          ethereum: {
+            createOnLogin: "users-without-wallets",
+          },
         },
         // Supported chains
         supportedChains: [mainnet, base, sepolia],

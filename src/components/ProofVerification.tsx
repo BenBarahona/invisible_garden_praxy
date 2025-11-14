@@ -235,8 +235,8 @@ export function ProofVerification({
           Zero-Knowledge Proof Verification
         </h2>
         <p className="text-gray-600">
-          Prove you're an approved medical professional without revealing your
-          identity.
+          Prove you&apos;re an approved medical professional without revealing
+          your identity.
         </p>
       </div>
 
@@ -311,8 +311,8 @@ export function ProofVerification({
             <div className="flex-1">
               <h3 className="font-semibold text-green-900">Proof Generated</h3>
               <p className="text-green-700 mt-1">
-                Your zero-knowledge proof has been created. Click "Verify Proof"
-                to validate it.
+                Your zero-knowledge proof has been created. Click &quot;Verify
+                Proof&quot; to validate it.
               </p>
 
               {/* Proof Details */}

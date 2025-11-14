@@ -297,7 +297,7 @@ export function SemaphoreIdentity() {
               Generate Zero-Knowledge Proof
             </Typography>
             <Typography variant="caption" color="text.secondary" paragraph>
-              Generate a proof that you're a verified medical professional
+              Generate a proof that you&apos;re a verified medical professional
               without revealing your identity.
             </Typography>
 
@@ -436,8 +436,8 @@ export function SemaphoreIdentity() {
         <Alert severity="info" icon={<SecurityIcon />}>
           <Typography variant="caption">
             <strong>Zero-Knowledge Privacy:</strong> Your Semaphore identity
-            allows you to prove you're a verified medical professional without
-            revealing who you are.
+            allows you to prove you&apos;re a verified medical professional
+            without revealing who you are.
           </Typography>
         </Alert>
       </Stack>

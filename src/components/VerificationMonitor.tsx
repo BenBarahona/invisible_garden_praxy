@@ -241,7 +241,7 @@ export function VerificationMonitor() {
                     className="px-4 py-8 text-center text-gray-500"
                   >
                     No verification attempts yet. Start monitoring by clicking
-                    "Live" above.
+                    &quot;Live&quot; above.
                   </td>
                 </tr>
               ) : (
