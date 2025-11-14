@@ -255,16 +255,16 @@ export function DebugInfo() {
                       happens when:
                       <ul style={{ marginTop: 8, marginBottom: 0 }}>
                         <li>
-                          You clicked "Generate New Identity" after linking
-                          certificates
+                          You clicked &quot;Generate New Identity&quot; after
+                          linking certificates
                         </li>
-                        <li>Your browser's localStorage was cleared</li>
-                        <li>You're using a different wallet/account</li>
+                        <li>Your browser&apos;s localStorage was cleared</li>
+                        <li>You&apos;re using a different wallet/account</li>
                       </ul>
                       <br />
-                      <strong>Solution:</strong> Go to the "Certificate
-                      Registration" tab and re-link your certificate with your
-                      current identity.
+                      <strong>Solution:</strong> Go to the &quot;Certificate
+                      Registration&quot; tab and re-link your certificate with
+                      your current identity.
                     </>
                   )}
                 </Alert>
