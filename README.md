@@ -251,6 +251,7 @@ NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID=your_project_id
 - 💬 **[Chat Integration Guide](CHAT_INTEGRATION.md)** - How to integrate and use the chat system
 - 🎨 **[Frontend README](README_FRONTEND.md)** - Complete frontend setup and features
 - ⚙️ **[API README](README_API.md)** - Backend API documentation and endpoints
+- ⚙️ **[REDIS Guide](VERCEL_KV_SETUP.md)** - How to integrate the in-memory storage solution both locally and on Vercel
 
 ---
 

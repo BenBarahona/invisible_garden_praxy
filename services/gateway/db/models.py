@@ -10,7 +10,7 @@ class Base(DeclarativeBase): pass
 class User(Base):
     __tablename__ = "users"
     id: Mapped[int] = mapped_column(primary_key=True)
-    external_id: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    external_id: Mapped[str] = mapped_column(String(256), unique=True, index=True)
     messages: Mapped[list["Message"]] = relationship(back_populates="user", cascade="all, delete-orphan")
 
 

@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Sync data to server-side storage
-    syncFromClientData(linkedCertificates);
+    await syncFromClientData(linkedCertificates);
 
     console.log(`[SERVER] Successfully synced ${linkedCertificates.length} certificates to server`);
 

@@ -1,16 +1,19 @@
 /**
- * Server-Side Group Manager with File-Based Persistence
+ * Server-Side Group Manager with Vercel KV Support
  * 
  * This module provides group management functionality for server-side code (API routes).
- * Uses file-based storage to persist between API calls.
- * 
- * For production, replace with proper database (PostgreSQL, Redis, etc.)
+ * Uses Vercel KV (Redis) for production and file-based storage for local development fallback.
  */
 
 import { Group } from "@semaphore-protocol/group";
 import certificatesData from "@/data/certificates.json";
-import fs from "fs";
-import path from "path";
+import {
+  loadCertificates,
+  saveCertificates,
+  getCertificate,
+  setCertificate,
+  type LinkedCertificate,
+} from "./certificateStorage";
 
 export interface Certificate {
   certificate_number: string;
@@ -18,69 +21,18 @@ export interface Certificate {
   last_name: string;
 }
 
-export interface LinkedCertificate extends Certificate {
-  commitment: string;
-  linkedAt: string;
-}
-
-// ========================================
-// File-Based Storage (Development & Production)
-// ========================================
-
-const STORAGE_FILE = path.join(process.cwd(), "linked_certificates_server.json");
-
-/**
- * Load certificates from file
- */
-function loadCertificatesFromFile(): Map<string, LinkedCertificate> {
-  try {
-    if (fs.existsSync(STORAGE_FILE)) {
-      const data = fs.readFileSync(STORAGE_FILE, "utf-8");
-      const parsed = JSON.parse(data);
-      const map = new Map<string, LinkedCertificate>();
-      
-      for (const [key, value] of Object.entries(parsed)) {
-        map.set(key, value as LinkedCertificate);
-      }
-      
-      console.log(`[SERVER] Loaded ${map.size} certificates from file storage`);
-      return map;
-    }
-  } catch (error) {
-    console.error("[SERVER] Failed to load certificates from file:", error);
-  }
-  
-  return new Map();
-}
-
-/**
- * Save certificates to file
- */
-function saveCertificatesToFile(certificates: Map<string, LinkedCertificate>): void {
-  try {
-    const obj: Record<string, LinkedCertificate> = {};
-    const entries = Array.from(certificates.entries());
-    for (const [key, value] of entries) {
-      obj[key] = value;
-    }
-    
-    fs.writeFileSync(STORAGE_FILE, JSON.stringify(obj, null, 2), "utf-8");
-    console.log(`[SERVER] Saved ${certificates.size} certificates to file storage`);
-  } catch (error) {
-    console.error("[SERVER] Failed to save certificates to file:", error);
-  }
-}
+export type { LinkedCertificate };
 
 /**
  * Link a certificate (server-side)
  * This should be called by an API endpoint
  */
-export function linkCertificateServer(
+export async function linkCertificateServer(
   certificateNumber: string,
   firstName: string,
   lastName: string,
   commitment: string
-): { success: boolean; message: string } {
+): Promise<{ success: boolean; message: string }> {
   // Verify certificate exists in approved list
   const certificate = certificatesData.approvedCertificates.find(
     (cert) =>
@@ -96,11 +48,8 @@ export function linkCertificateServer(
     };
   }
 
-  // Load current certificates
-  const linkedCertificates = loadCertificatesFromFile();
-
   // Check if already linked
-  const existing = linkedCertificates.get(certificateNumber);
+  const existing = await getCertificate(certificateNumber);
   
   if (existing) {
     if (existing.commitment === commitment) {
@@ -117,14 +66,13 @@ export function linkCertificateServer(
   }
 
   // Link certificate
-  linkedCertificates.set(certificateNumber, {
+  const linkedCert: LinkedCertificate = {
     ...certificate,
     commitment,
     linkedAt: new Date().toISOString(),
-  });
+  };
 
-  // Save to file
-  saveCertificatesToFile(linkedCertificates);
+  await setCertificate(certificateNumber, linkedCert);
 
   // Invalidate cache
   invalidateGroupCacheServer();
@@ -138,11 +86,11 @@ export function linkCertificateServer(
 /**
  * Get all approved commitments from linked certificates
  */
-export function getAllApprovedCommitmentsServer(): bigint[] {
-  console.log("[SERVER] Getting commitments from server storage");
+export async function getAllApprovedCommitmentsServer(): Promise<bigint[]> {
+  console.log("[SERVER] Getting commitments from storage");
   
-  // Always load fresh from file
-  const linkedCertificates = loadCertificatesFromFile();
+  // Load all certificates
+  const linkedCertificates = await loadCertificates();
   console.log("[SERVER] Loaded certificates count:", linkedCertificates.size);
   
   const commitments: bigint[] = [];
@@ -160,8 +108,8 @@ export function getAllApprovedCommitmentsServer(): bigint[] {
 /**
  * Create medical professionals group
  */
-export function createMedicalProfessionalsGroupServer(): Group {
-  const commitments = getAllApprovedCommitmentsServer();
+export async function createMedicalProfessionalsGroupServer(): Promise<Group> {
+  const commitments = await getAllApprovedCommitmentsServer();
   
   if (commitments.length === 0) {
     throw new Error("No linked certificates yet.");
@@ -202,10 +150,10 @@ export async function getMedicalProfessionalsGroupServer(): Promise<{
     return { group, root: cachedMedicalGroupServer.root };
   }
   
-  console.log("[SERVER] Building new group from file storage");
+  console.log("[SERVER] Building new group from storage");
   
-  // Rebuild group from file
-  const commitments = getAllApprovedCommitmentsServer();
+  // Rebuild group from storage
+  const commitments = await getAllApprovedCommitmentsServer();
   
   if (commitments.length === 0) {
     throw new Error("No linked certificates yet.");
@@ -231,9 +179,9 @@ export async function getMedicalProfessionalsGroupServer(): Promise<{
 export async function getCurrentGroupRootServer(): Promise<bigint> {
   console.log("[SERVER] getCurrentGroupRootServer called");
   
-  // Load fresh from file to get current count
-  const linkedCertificates = loadCertificatesFromFile();
-  console.log("[SERVER] Current file storage size:", linkedCertificates.size);
+  // Load fresh from storage to get current count
+  const linkedCertificates = await loadCertificates();
+  console.log("[SERVER] Current storage size:", linkedCertificates.size);
   
   try {
     const { root } = await getMedicalProfessionalsGroupServer();
@@ -255,9 +203,9 @@ export function invalidateGroupCacheServer(): void {
 
 /**
  * Sync data from client (for development)
- * In production, use proper database and this won't be needed
+ * In production, this syncs to Vercel KV
  */
-export function syncFromClientData(linkedCertificates: LinkedCertificate[]): void {
+export async function syncFromClientData(linkedCertificates: LinkedCertificate[]): Promise<void> {
   console.log("[SERVER] syncFromClientData called with", linkedCertificates.length, "certificates");
   
   const certificatesMap = new Map<string, LinkedCertificate>();
@@ -271,8 +219,8 @@ export function syncFromClientData(linkedCertificates: LinkedCertificate[]): voi
     certificatesMap.set(cert.certificate_number, cert);
   }
   
-  // Save to file
-  saveCertificatesToFile(certificatesMap);
+  // Save to storage (KV or file)
+  await saveCertificates(certificatesMap);
   
   invalidateGroupCacheServer();
 }
@@ -280,11 +228,12 @@ export function syncFromClientData(linkedCertificates: LinkedCertificate[]): voi
 /**
  * Get stats
  */
-export function getStatsServer() {
-  const linkedCertificates = loadCertificatesFromFile();
+export async function getStatsServer() {
+  const linkedCertificates = await loadCertificates();
+  const commitments = await getAllApprovedCommitmentsServer();
   return {
     totalApprovedCertificates: certificatesData.approvedCertificates.length,
     totalLinkedCertificates: linkedCertificates.size,
-    totalCommitments: getAllApprovedCommitmentsServer().length,
+    totalCommitments: commitments.length,
   };
 }

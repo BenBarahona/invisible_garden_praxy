@@ -12,11 +12,19 @@ A modern Web3 frontend application built with Next.js 14, Material UI, and Frame
 
 ## Getting Started
 
+### Prerequisites
+
+For local development, no additional setup is required. The app will use file-based storage for certificates.
+
+For **Vercel deployment**, you need to set up Vercel KV (Redis). See [VERCEL_KV_SETUP.md](../VERCEL_KV_SETUP.md) for detailed instructions.
+
 ### Installation
 
 ```bash
 cd src
 npm install
+# or use pnpm
+pnpm install
 ```
 
 ### Development
@@ -25,6 +33,8 @@ Run the development server:
 
 ```bash
 npm run dev
+# or
+pnpm dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) in your browser to see the application.
@@ -65,6 +75,35 @@ src/
 - 🔐 Web3 wallet connection ready
 - ⚡ Optimized performance with Next.js 14
 - 📱 Mobile-responsive design
+
+## Deployment
+
+### Deploying to Vercel
+
+1. **Set up Vercel KV** (Required for production)
+
+   - Follow the detailed guide: [VERCEL_KV_SETUP.md](../VERCEL_KV_SETUP.md)
+   - Create a KV database in Vercel Dashboard
+   - Connect it to your project
+
+2. **Deploy**
+
+   ```bash
+   cd src
+   vercel --prod
+   ```
+
+3. **Verify**
+   - Check that certificates sync properly
+   - Test proof verification
+   - Monitor logs for `[STORAGE] Using Vercel KV`
+
+### Local vs Production Storage
+
+- **Local Development**: Uses file-based storage (`linked_certificates_server.json`)
+- **Vercel Production**: Uses Vercel KV (Redis) - required for serverless deployment
+
+The app automatically detects and uses the appropriate storage backend.
 
 ## Next Steps
 
