@@ -63,13 +63,37 @@ export function SemaphoreIdentity() {
       const { group: medicalGroup } =
         await getMedicalProfessionalsGroupFromServer();
 
+      console.log(
+        "[DEBUG] Current identity commitment:",
+        identity.commitment.toString()
+      );
+      console.log(
+        "[DEBUG] Group members:",
+        medicalGroup.members.map((m) => m.toString())
+      );
+      console.log("[DEBUG] Group size:", medicalGroup.members.length);
+
       // STEP 2: Check if user is in the group (optional check)
       // Note: This doesn't reveal identity, just checks if they CAN generate a proof
       const isInGroup = medicalGroup.members.includes(identity.commitment);
 
       if (!isInGroup) {
+        console.error("[DEBUG] Identity commitment NOT found in group!");
+        console.error(
+          "[DEBUG] Your commitment:",
+          identity.commitment.toString()
+        );
+        console.error(
+          "[DEBUG] Available commitments:",
+          medicalGroup.members.map((m) => m.toString()).join("\n")
+        );
+
         setError(
-          "You are not in the approved medical professionals group. Please contact an administrator."
+          "You are not in the approved medical professionals group. Please contact an administrator.\n\n" +
+            `Your commitment: ${identity.commitment
+              .toString()
+              .slice(0, 20)}...\n` +
+            `Group has ${medicalGroup.members.length} members but your commitment is not among them.`
         );
         return;
       }
@@ -213,14 +237,38 @@ export function SemaphoreIdentity() {
             const { group: medicalGroup } =
               await getMedicalProfessionalsGroupFromServer();
 
+            console.log(
+              "[DEBUG] Current identity commitment:",
+              identity.commitment.toString()
+            );
+            console.log(
+              "[DEBUG] Group members:",
+              medicalGroup.members.map((m) => m.toString())
+            );
+            console.log("[DEBUG] Group size:", medicalGroup.members.length);
+
             // STEP 2: Check if user is in the group
             const isInGroup = medicalGroup.members.includes(
               identity.commitment
             );
 
             if (!isInGroup) {
+              console.error("[DEBUG] Identity commitment NOT found in group!");
+              console.error(
+                "[DEBUG] Your commitment:",
+                identity.commitment.toString()
+              );
+              console.error(
+                "[DEBUG] Available commitments:",
+                medicalGroup.members.map((m) => m.toString()).join("\n")
+              );
+
               setError(
-                "You are not in the approved medical professionals group. Please contact an administrator."
+                "You are not in the approved medical professionals group. Please contact an administrator.\n\n" +
+                  `Your commitment: ${identity.commitment
+                    .toString()
+                    .slice(0, 20)}...\n` +
+                  `Group has ${medicalGroup.members.length} members but your commitment is not among them.`
               );
               return;
             }
@@ -339,7 +387,17 @@ export function SemaphoreIdentity() {
           <Button
             variant="outlined"
             size="small"
-            onClick={resetIdentity}
+            onClick={() => {
+              if (
+                window.confirm(
+                  "⚠️ WARNING: Generating a new identity will create a different commitment.\n\n" +
+                    "If you've already linked certificates to your current identity, you will need to re-link them with the new identity.\n\n" +
+                    "Are you sure you want to continue?"
+                )
+              ) {
+                resetIdentity();
+              }
+            }}
             sx={{ mr: 2 }}
           >
             Generate New Identity

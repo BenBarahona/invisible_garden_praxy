@@ -19,6 +19,7 @@ import LogoutIcon from "@mui/icons-material/Logout";
 import { usePrivy } from "@privy-io/react-auth";
 import { SemaphoreIdentity } from "@/components/SemaphoreIdentity";
 import { CertificateRegistration } from "@/components/CertificateRegistration";
+import { DebugInfo } from "@/components/DebugInfo";
 
 const MotionBox = motion(Box);
 const MotionCard = motion(Card);
@@ -149,9 +150,21 @@ export default function Home() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.4 }}
-            sx={{ mb: 8 }}
+            sx={{ mb: 4 }}
           >
             <SemaphoreIdentity />
+          </MotionBox>
+        )}
+
+        {/* Debug Info - Only show when authenticated */}
+        {authenticated && (
+          <MotionBox
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.5 }}
+            sx={{ mb: 8 }}
+          >
+            <DebugInfo />
           </MotionBox>
         )}
 
