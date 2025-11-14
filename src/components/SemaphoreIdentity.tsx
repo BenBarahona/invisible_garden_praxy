@@ -183,6 +183,77 @@ export function SemaphoreIdentity() {
     navigator.clipboard.writeText(text);
   };
 
+  const handleGenerateZKProofClick = async () => {
+    if (!showProofGenerator) {
+      // Show the proof generator and auto-generate proof
+      setShowProofGenerator(true);
+
+      // Generate timestamp-based signal
+      const timestamp = Date.now();
+      const autoSignal = `access_chat_${timestamp}`;
+      setMessage(autoSignal);
+
+      // Wait a tick for state to update, then trigger proof generation
+      setTimeout(async () => {
+        if (identity) {
+          setIsGeneratingProof(true);
+          setError(null);
+          setProof(null);
+          setVerificationResult(null);
+
+          try {
+            // STEP 0: Sync certificates to server
+            console.log(
+              "[SYNC] Syncing certificates to server before proof generation..."
+            );
+            await syncCertificatesToServer();
+
+            // STEP 1: Get the approved medical professionals group
+            const { group: medicalGroup } =
+              await getMedicalProfessionalsGroup();
+
+            // STEP 2: Check if user is in the group
+            const isInGroup = medicalGroup.members.includes(
+              identity.commitment
+            );
+
+            if (!isInGroup) {
+              setError(
+                "You are not in the approved medical professionals group. Please contact an administrator."
+              );
+              return;
+            }
+
+            // STEP 3: Generate zero-knowledge proof
+            const generatedProof = await generateMembershipProof(
+              identity,
+              medicalGroup,
+              autoSignal,
+              "medical-professionals"
+            );
+
+            setProof(generatedProof);
+          } catch (err: any) {
+            console.error("Proof generation error:", err);
+
+            if (err.message?.includes("No approved medical professionals")) {
+              setError(
+                "No approved medical professionals found. Please add members to the group first."
+              );
+            } else {
+              setError("Failed to generate proof. Please try again.");
+            }
+          } finally {
+            setIsGeneratingProof(false);
+          }
+        }
+      }, 100);
+    } else {
+      // Just hide the proof generator
+      setShowProofGenerator(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <Paper
@@ -277,9 +348,19 @@ export function SemaphoreIdentity() {
             variant="contained"
             size="small"
             startIcon={<SecurityIcon />}
-            onClick={() => setShowProofGenerator(!showProofGenerator)}
+            onClick={handleGenerateZKProofClick}
+            disabled={isGeneratingProof}
           >
-            {showProofGenerator ? "Hide" : "Generate ZK Proof"}
+            {isGeneratingProof ? (
+              <>
+                <CircularProgress size={20} sx={{ mr: 1 }} />
+                Generating...
+              </>
+            ) : showProofGenerator ? (
+              "Hide"
+            ) : (
+              "Generate ZK Proof"
+            )}
           </Button>
         </Box>
 

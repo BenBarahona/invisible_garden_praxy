@@ -1,14 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useRef } from "react";
 import { ProtectedRoute, useVerification } from "@/components/ProtectedRoute";
-import {
-  getVerificationSession,
-  clearVerificationSession,
-  formatSessionDuration,
-  getSessionDuration,
-} from "@/lib/verificationSession";
 
 /**
  * Protected Chat Page
@@ -17,301 +10,230 @@ import {
  * their zero-knowledge proof. Access is granted based on verification session.
  */
 
-function ChatContent() {
-  const router = useRouter();
-  const { verified, session } = useVerification();
-  const [sessionDuration, setSessionDuration] = useState<number | null>(null);
+// API Configuration
+const API_BASE_URL = "http://localhost:8080";
 
-  // Update session duration display
+interface Message {
+  role: "user" | "assistant" | "system";
+  content: string;
+  timestamp?: string;
+}
+
+type ModelType = "t_tuned" | "c-tuned" | "default";
+
+function ChatContent() {
+  const { session } = useVerification();
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [inputMessage, setInputMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [selectedModel, setSelectedModel] = useState<ModelType>("t_tuned");
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(true);
+
+  // Get user ID from session (nullifier hash for privacy)
+  const userId = session?.nullifier || "";
+
+  // Auto-scroll to bottom of messages
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
   useEffect(() => {
-    const updateTimer = () => {
-      const duration = getSessionDuration();
-      setSessionDuration(duration);
+    scrollToBottom();
+  }, [messages]);
+
+  // Load chat history on mount
+  useEffect(() => {
+    const loadChatHistory = async () => {
+      if (!userId) return;
+
+      setIsLoadingHistory(true);
+      try {
+        const response = await fetch(
+          `${API_BASE_URL}/get_chat_by_user/${userId}/${selectedModel}`
+        );
+
+        if (response.ok) {
+          const history = await response.json();
+          const formattedMessages: Message[] = history.map((msg: any) => ({
+            role: msg.role,
+            content: msg.content,
+            timestamp: msg.created_at,
+          }));
+          setMessages(formattedMessages);
+        }
+      } catch (error) {
+        console.error("Failed to load chat history:", error);
+      } finally {
+        setIsLoadingHistory(false);
+      }
     };
 
-    updateTimer();
-    const interval = setInterval(updateTimer, 60000);
+    loadChatHistory();
+  }, [userId, selectedModel]);
 
-    return () => clearInterval(interval);
-  }, []);
+  // Send message to API
+  const handleSendMessage = async () => {
+    if (!inputMessage.trim() || isLoading || !userId) return;
 
-  const handleLogout = () => {
-    clearVerificationSession();
-    router.push("/");
+    const userMessage = inputMessage.trim();
+    setInputMessage("");
+    setIsLoading(true);
+
+    // Optimistically add user message to UI
+    const newUserMessage: Message = {
+      role: "user",
+      content: userMessage,
+      timestamp: new Date().toISOString(),
+    };
+    setMessages((prev) => [...prev, newUserMessage]);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/feedback`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          user_id: userId,
+          question: userMessage,
+          model: selectedModel,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to send message");
+      }
+
+      const conversation = await response.json();
+
+      // Update messages with the full conversation from API
+      const formattedMessages: Message[] = conversation.map((msg: any) => ({
+        role: msg.role,
+        content: msg.content,
+        timestamp: new Date().toISOString(),
+      }));
+      setMessages(formattedMessages);
+    } catch (error) {
+      console.error("Error sending message:", error);
+      // Remove optimistic message on error
+      setMessages((prev) => prev.filter((msg) => msg !== newUserMessage));
+      alert("Failed to send message. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
-                <span className="text-white text-xl">💬</span>
-              </div>
-              <div>
-                <h1 className="text-xl font-bold text-gray-900">
-                  Secure Medical Chat
-                </h1>
-                <p className="text-sm text-gray-500">
-                  Zero-Knowledge Verified Access
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-4">
-              {/* Session Status */}
-              <div className="px-3 py-2 bg-green-50 rounded-lg border border-green-200">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                  <p className="text-xs text-green-700 font-semibold">
-                    Active Session
-                    {sessionDuration !== null && (
-                      <span className="ml-2 text-green-600">
-                        ({formatSessionDuration(sessionDuration)})
-                      </span>
-                    )}
-                  </p>
-                </div>
-              </div>
-
-              {/* Logout Button */}
-              <button
-                onClick={handleLogout}
-                className="px-4 py-2 text-sm font-semibold text-gray-700 hover:text-gray-900 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                Logout
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Welcome Banner */}
-        <div className="bg-white rounded-2xl shadow-lg p-8 mb-8">
-          <div className="flex items-start gap-4">
-            <div className="p-3 bg-green-100 rounded-full">
-              <span className="text-3xl">✓</span>
-            </div>
-            <div className="flex-1">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                Welcome, Verified Medical Professional!
-              </h2>
-              <p className="text-gray-600 mb-4">
-                You&apos;ve successfully proven your credentials using
-                zero-knowledge proofs. Your identity remains private while your
-                group membership has been verified.
-              </p>
-
-              {/* Verification Details */}
-              {session && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-                  <div className="p-4 bg-gray-50 rounded-lg">
-                    <p className="text-sm text-gray-600 mb-1">Verified At</p>
-                    <p className="text-sm font-mono text-gray-900">
-                      {new Date(session.verifiedAt).toLocaleString()}
-                    </p>
-                  </div>
-                  <div className="p-4 bg-gray-50 rounded-lg">
-                    <p className="text-sm text-gray-600 mb-1">Nullifier Hash</p>
-                    <p className="text-sm font-mono text-gray-900">
-                      {session.nullifier.slice(0, 20)}...
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
+      <div className="w-full max-w-4xl h-[90vh] bg-white rounded-lg shadow-xl overflow-hidden flex flex-col">
+        {/* Chat Header - Minimal */}
+        <div className="bg-blue-600 text-white px-6 py-3 flex items-center justify-between flex-shrink-0">
+          <h3 className="text-lg font-semibold">Medical AI Chat</h3>
+          <select
+            value={selectedModel}
+            onChange={(e) => setSelectedModel(e.target.value as ModelType)}
+            className="px-3 py-1 text-sm bg-white/20 border border-white/30 rounded text-white focus:outline-none focus:ring-2 focus:ring-white/50"
+            disabled={isLoading}
+          >
+            <option value="t_tuned">Token Tuned</option>
+            <option value="c-tuned">Conv Tuned</option>
+            <option value="default">Default</option>
+          </select>
         </div>
 
-        {/* Chat Interface */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Chat Area */}
-          <div className="lg:col-span-2">
-            <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-              {/* Chat Header */}
-              <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-4">
-                <h3 className="text-lg font-semibold">
-                  Medical Consultation Chat
-                </h3>
-                <p className="text-sm text-blue-100 mt-1">
-                  End-to-end encrypted · Anonymous verified participants
-                </p>
+        {/* Messages Area */}
+        <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
+          <div className="space-y-4">
+            {isLoadingHistory ? (
+              <div className="text-center py-8">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <p className="text-gray-500 text-sm mt-2">Loading...</p>
               </div>
-
-              {/* Messages Area */}
-              <div className="h-96 overflow-y-auto p-6 bg-gray-50">
-                <div className="space-y-4">
-                  {/* System Message */}
-                  <div className="flex justify-center">
-                    <div className="px-4 py-2 bg-gray-200 rounded-full text-sm text-gray-600">
-                      🔒 This chat is protected by zero-knowledge verification
-                    </div>
+            ) : messages.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-gray-400 text-sm">Start a conversation...</p>
+              </div>
+            ) : (
+              messages.map((message, index) => (
+                <div
+                  key={index}
+                  className={`flex items-start gap-3 ${
+                    message.role === "user" ? "flex-row-reverse" : ""
+                  }`}
+                >
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm flex-shrink-0 ${
+                      message.role === "user" ? "bg-green-500" : "bg-blue-500"
+                    }`}
+                  >
+                    {message.role === "user" ? "👤" : "🤖"}
                   </div>
-
-                  {/* Sample Message */}
-                  <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm">
-                      👤
-                    </div>
-                    <div className="flex-1">
-                      <div className="bg-white rounded-lg p-4 shadow-sm">
-                        <p className="text-sm text-gray-600 mb-1">
-                          <span className="font-semibold text-gray-900">
-                            Anonymous Professional
-                          </span>{" "}
-                          · Verified ✓
-                        </p>
-                        <p className="text-gray-800">
-                          Welcome to the secure chat. All participants have been
-                          verified through ZK proofs.
-                        </p>
-                      </div>
-                      <p className="text-xs text-gray-500 mt-1 ml-4">
-                        Just now
+                  <div className="flex-1 max-w-[80%]">
+                    <div
+                      className={`rounded-lg p-4 shadow-sm ${
+                        message.role === "user" ? "bg-green-100" : "bg-white"
+                      }`}
+                    >
+                      <p className="text-gray-800 whitespace-pre-wrap">
+                        {message.content}
                       </p>
                     </div>
                   </div>
+                </div>
+              ))
+            )}
 
-                  {/* Placeholder for more messages */}
-                  <div className="text-center py-8">
-                    <p className="text-gray-400 text-sm">
-                      Start a conversation with other verified professionals
-                    </p>
+            {isLoading && (
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm">
+                  🤖
+                </div>
+                <div className="flex-1">
+                  <div className="bg-white rounded-lg p-4 shadow-sm">
+                    <div className="flex gap-1">
+                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-100"></div>
+                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-200"></div>
+                    </div>
                   </div>
                 </div>
               </div>
+            )}
 
-              {/* Message Input */}
-              <div className="border-t border-gray-200 p-4 bg-white">
-                <div className="flex gap-3">
-                  <input
-                    type="text"
-                    placeholder="Type a message..."
-                    className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <button className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold">
-                    Send
-                  </button>
-                </div>
-                <p className="text-xs text-gray-500 mt-2">
-                  💡 Your messages are end-to-end encrypted
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Active Users */}
-            <div className="bg-white rounded-2xl shadow-lg p-6">
-              <h3 className="font-semibold text-gray-900 mb-4">
-                Active Verified Users
-              </h3>
-              <div className="space-y-3">
-                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold text-gray-900">
-                      Anonymous Professional #1
-                    </p>
-                    <p className="text-xs text-gray-500">Verified ✓</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold text-gray-900">
-                      Anonymous Professional #2
-                    </p>
-                    <p className="text-xs text-gray-500">Verified ✓</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Security Info */}
-            <div className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-2xl shadow-lg p-6">
-              <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <span className="text-xl">🔒</span>
-                Security Features
-              </h3>
-              <div className="space-y-3 text-sm">
-                <div className="flex items-start gap-2">
-                  <span className="text-green-600 mt-0.5">✓</span>
-                  <p className="text-gray-700">
-                    Zero-knowledge proof verification
-                  </p>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="text-green-600 mt-0.5">✓</span>
-                  <p className="text-gray-700">Anonymous group membership</p>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="text-green-600 mt-0.5">✓</span>
-                  <p className="text-gray-700">End-to-end encryption</p>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="text-green-600 mt-0.5">✓</span>
-                  <p className="text-gray-700">
-                    Persistent session (until logout/close)
-                  </p>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="text-green-600 mt-0.5">✓</span>
-                  <p className="text-gray-700">No identity disclosure</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Quick Actions */}
-            <div className="bg-white rounded-2xl shadow-lg p-6">
-              <h3 className="font-semibold text-gray-900 mb-4">
-                Quick Actions
-              </h3>
-              <div className="space-y-2">
-                <button className="w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 rounded-lg transition-colors">
-                  📋 View Verification Status
-                </button>
-                <button
-                  onClick={() => router.push("/")}
-                  className="w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
-                >
-                  ✓ Re-verify Credentials
-                </button>
-                <button
-                  onClick={handleLogout}
-                  className="w-full px-4 py-2 text-sm text-left text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                >
-                  🚪 Logout
-                </button>
-              </div>
-            </div>
+            <div ref={messagesEndRef} />
           </div>
         </div>
 
-        {/* Info Banner */}
-        <div className="mt-8 p-6 bg-blue-50 border border-blue-200 rounded-lg">
-          <div className="flex items-start gap-3">
-            <span className="text-blue-600 text-xl">ℹ️</span>
-            <div className="flex-1">
-              <h4 className="font-semibold text-blue-900 mb-1">
-                How Zero-Knowledge Verification Works
-              </h4>
-              <p className="text-blue-800 text-sm">
-                You gained access to this chat by proving you&apos;re a member
-                of the approved medical professionals group{" "}
-                <strong>without revealing your identity</strong>. The system
-                only knows that you belong to the group, not who you are
-                specifically. This ensures both security and privacy.
-              </p>
-            </div>
+        {/* Message Input */}
+        <div className="border-t border-gray-200 p-4 bg-white flex-shrink-0">
+          <div className="flex gap-3">
+            <input
+              type="text"
+              value={inputMessage}
+              onChange={(e) => setInputMessage(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="Type your message..."
+              className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+              disabled={isLoading || !userId}
+            />
+            <button
+              onClick={handleSendMessage}
+              disabled={isLoading || !inputMessage.trim() || !userId}
+              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold disabled:bg-gray-400 disabled:cursor-not-allowed"
+            >
+              {isLoading ? "..." : "Send"}
+            </button>
           </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 }
