@@ -19,24 +19,14 @@ import LogoutIcon from "@mui/icons-material/Logout";
 import { usePrivy } from "@privy-io/react-auth";
 import { SemaphoreIdentity } from "@/components/SemaphoreIdentity";
 import { CertificateRegistration } from "@/components/CertificateRegistration";
-import { useSemaphore } from "@/hooks/useSemaphore";
-import {
-  isCommitmentLinked,
-  getCertificateByCommitment,
-} from "@/lib/certificateRegistry";
 
 const MotionBox = motion(Box);
 const MotionCard = motion(Card);
 
 export default function Home() {
   const { ready, authenticated, user, login, logout } = usePrivy();
-  const { identityCommitment } = useSemaphore();
 
   const walletAddress = user?.wallet?.address;
-
-  // Check if user has a verified certificate
-  const isCertificateVerified =
-    identityCommitment && isCommitmentLinked(identityCommitment);
 
   const formatAddress = (address: string) => {
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
@@ -153,15 +143,15 @@ export default function Home() {
           </MotionBox>
         )}
 
-        {/* Semaphore Identity Section - Only show when certificate is verified */}
-        {authenticated && isCertificateVerified && (
+        {/* Semaphore Identity Section - Only show when authenticated */}
+        {authenticated && (
           <MotionBox
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.4 }}
             sx={{ mb: 8 }}
           >
-            <SemaphoreIdentity autoGenerateProof={true} />
+            <SemaphoreIdentity />
           </MotionBox>
         )}
 
