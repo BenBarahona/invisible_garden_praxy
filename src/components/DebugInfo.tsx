@@ -11,10 +11,12 @@ import {
   Collapse,
 } from "@mui/material";
 import BugReportIcon from "@mui/icons-material/BugReport";
+import RefreshIcon from "@mui/icons-material/Refresh";
 import { useSemaphore } from "@/hooks/useSemaphore";
 import {
   getAllLinkedCertificates,
   isCommitmentLinked,
+  syncCertificatesToServer,
 } from "@/lib/certificateRegistry";
 import { getMedicalProfessionalsGroupFromServer } from "@/lib/groupManager";
 
@@ -23,6 +25,34 @@ export function DebugInfo() {
   const [debugInfo, setDebugInfo] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showDebug, setShowDebug] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<string | null>(null);
+
+  const handleForceSync = async () => {
+    setIsLoading(true);
+    setSyncStatus("Syncing...");
+    try {
+      const success = await syncCertificatesToServer();
+      if (success) {
+        setSyncStatus(
+          "✅ Sync successful! Wait 1-2 seconds, then refresh debug info."
+        );
+        // Refresh debug info after a short delay
+        setTimeout(() => {
+          gatherDebugInfo();
+          setSyncStatus(null);
+        }, 2000);
+      } else {
+        setSyncStatus("❌ Sync failed. Check console for details.");
+      }
+    } catch (error) {
+      console.error("Force sync error:", error);
+      setSyncStatus(
+        `❌ Error: ${error instanceof Error ? error.message : String(error)}`
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const gatherDebugInfo = async () => {
     setIsLoading(true);
@@ -92,25 +122,61 @@ export function DebugInfo() {
         border: "1px solid rgba(255, 200, 0, 0.3)",
       }}
     >
-      <Button
-        variant="outlined"
-        size="small"
-        startIcon={<BugReportIcon />}
-        onClick={() => {
-          setShowDebug(!showDebug);
-          if (!showDebug && !debugInfo) {
-            gatherDebugInfo();
-          }
-        }}
-        disabled={isLoading}
-        color="warning"
-      >
-        {isLoading
-          ? "Loading..."
-          : showDebug
-          ? "Hide Debug Info"
-          : "Show Debug Info"}
-      </Button>
+      <Stack direction="row" spacing={1}>
+        <Button
+          variant="outlined"
+          size="small"
+          startIcon={<BugReportIcon />}
+          onClick={() => {
+            setShowDebug(!showDebug);
+            if (!showDebug && !debugInfo) {
+              gatherDebugInfo();
+            }
+          }}
+          disabled={isLoading}
+          color="warning"
+        >
+          {isLoading
+            ? "Loading..."
+            : showDebug
+            ? "Hide Debug Info"
+            : "Show Debug Info"}
+        </Button>
+
+        {showDebug && (
+          <>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<RefreshIcon />}
+              onClick={gatherDebugInfo}
+              disabled={isLoading}
+              color="info"
+            >
+              Refresh
+            </Button>
+
+            <Button
+              variant="contained"
+              size="small"
+              onClick={handleForceSync}
+              disabled={isLoading}
+              color="primary"
+            >
+              Force Sync to Server
+            </Button>
+          </>
+        )}
+      </Stack>
+
+      {syncStatus && (
+        <Alert
+          severity={syncStatus.includes("✅") ? "success" : "error"}
+          sx={{ mt: 2 }}
+        >
+          {syncStatus}
+        </Alert>
+      )}
 
       <Collapse in={showDebug}>
         {debugInfo && (
@@ -121,6 +187,67 @@ export function DebugInfo() {
               </Alert>
             ) : (
               <Stack spacing={2}>
+                {/* Diagnosis */}
+                {!debugInfo.currentIdentity.isInServerGroup && (
+                  <Alert severity="error">
+                    <Typography variant="subtitle2" gutterBottom>
+                      <strong>
+                        ❌ Problem Detected: Identity Not in Server Group
+                      </strong>
+                    </Typography>
+                    <Typography variant="body2" component="div" sx={{ mt: 1 }}>
+                      Your current identity commitment is <strong>not</strong>{" "}
+                      in the server's group. This means you cannot generate
+                      valid proofs.
+                    </Typography>
+                    <Typography variant="body2" component="div" sx={{ mt: 2 }}>
+                      <strong>Possible causes:</strong>
+                    </Typography>
+                    <ul style={{ margin: "8px 0", paddingLeft: "20px" }}>
+                      <li>You haven't registered a certificate yet</li>
+                      <li>You registered but the sync to server failed</li>
+                      <li>You cleared browser data (localStorage was lost)</li>
+                      <li>Server data doesn't match your local data</li>
+                    </ul>
+                    <Typography variant="body2" component="div" sx={{ mt: 2 }}>
+                      <strong>Solutions:</strong>
+                    </Typography>
+                    <ol style={{ margin: "8px 0", paddingLeft: "20px" }}>
+                      {debugInfo.currentIdentity.isLinkedLocally ? (
+                        <>
+                          <li>
+                            Click "Force Sync to Server" above to sync your
+                            local certificate
+                          </li>
+                          <li>Wait 2 seconds for sync to propagate</li>
+                          <li>Click "Refresh" to verify it worked</li>
+                        </>
+                      ) : (
+                        <>
+                          <li>
+                            Go to the "Certificate Registration" section above
+                          </li>
+                          <li>
+                            Register your certificate with your name and
+                            certificate number
+                          </li>
+                          <li>
+                            The system will automatically link it to your
+                            current identity
+                          </li>
+                        </>
+                      )}
+                    </ol>
+                  </Alert>
+                )}
+
+                {debugInfo.currentIdentity.isInServerGroup && (
+                  <Alert severity="success">
+                    <strong>✅ All Good!</strong> Your identity is in the server
+                    group. You can generate and verify proofs.
+                  </Alert>
+                )}
+
                 {/* Current Identity Status */}
                 <Box>
                   <Typography
