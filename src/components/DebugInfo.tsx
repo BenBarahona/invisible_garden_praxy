@@ -197,17 +197,17 @@ export function DebugInfo() {
                     </Typography>
                     <Typography variant="body2" component="div" sx={{ mt: 1 }}>
                       Your current identity commitment is <strong>not</strong>{" "}
-                      in the server's group. This means you cannot generate
+                      in the server&apos;s group. This means you cannot generate
                       valid proofs.
                     </Typography>
                     <Typography variant="body2" component="div" sx={{ mt: 2 }}>
                       <strong>Possible causes:</strong>
                     </Typography>
                     <ul style={{ margin: "8px 0", paddingLeft: "20px" }}>
-                      <li>You haven't registered a certificate yet</li>
+                      <li>You haven&apos;t registered a certificate yet</li>
                       <li>You registered but the sync to server failed</li>
                       <li>You cleared browser data (localStorage was lost)</li>
-                      <li>Server data doesn't match your local data</li>
+                      <li>Server data doesn&apos;t match your local data</li>
                     </ul>
                     <Typography variant="body2" component="div" sx={{ mt: 2 }}>
                       <strong>Solutions:</strong>
