@@ -1,0 +1,20 @@
+{
+  "approvedCertificates": [
+    {
+      "certificate_number": "MN-118951",
+      "first_name": "Claudia",
+      "last_name": "Gutierrez"
+    },
+    {
+      "certificate_number": "MN-123456",
+      "first_name": "Leonel",
+      "last_name": "Messi"
+    },
+    {
+      "certificate_number": "MN-789012",
+      "first_name": "John",
+      "last_name": "Doe"
+    }
+  ]
+}
+

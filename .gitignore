@@ -41,3 +41,11 @@ Thumbs.db
 # Logs
 *.log
 
+# Server-side storage (development)
+linked_certificates_server.json
+
+# Next.js
+.next/
+out/
+node_modules/
+
