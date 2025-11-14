@@ -34,37 +34,17 @@ export function createMedicalProfessionalsGroup(): Group {
 // ========================================
 // Group Root Cache (for performance)
 // ========================================
+// NOTE: Cache is disabled to ensure consistency when syncing with server
+// Merkle tree building is fast enough without caching
 
 /**
- * Cache to avoid rebuilding Merkle tree on every request
- */
-interface CachedGroup {
-  root: bigint;
-  members: bigint[];
-  lastUpdated: number;
-}
-
-let cachedMedicalGroup: CachedGroup | null = null;
-
-/**
- * Gets the current medical professionals group with caching
- * Rebuilds only if cache is expired or invalidated
+ * Gets the current medical professionals group
+ * Always builds fresh from localStorage to ensure consistency
  */
 export async function getMedicalProfessionalsGroup(): Promise<{
   group: Group;
   root: bigint;
 }> {
-  const CACHE_DURATION = 5 * 60 * 1000;
-  const now = Date.now();
-  
-  if (
-    cachedMedicalGroup &&
-    now - cachedMedicalGroup.lastUpdated < CACHE_DURATION
-  ) {
-    const group = new Group(cachedMedicalGroup.members);
-    return { group, root: cachedMedicalGroup.root };
-  }
-  
   const commitments = getAllApprovedCommitments();
   
   if (commitments.length === 0) {
@@ -73,20 +53,14 @@ export async function getMedicalProfessionalsGroup(): Promise<{
   
   const group = new Group(commitments);
   
-  cachedMedicalGroup = {
-    root: group.root,
-    members: commitments,
-    lastUpdated: now,
-  };
-  
   return { group, root: group.root };
 }
 
 /**
- * Invalidates the cache (call when someone links a certificate)
+ * Invalidates the cache (no-op - kept for compatibility)
  */
 export function invalidateGroupCache(): void {
-  cachedMedicalGroup = null;
+  // No-op: Cache is disabled to prevent sync issues
 }
 
 /**

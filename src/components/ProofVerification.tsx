@@ -59,7 +59,15 @@ export function ProofVerification({
     try {
       // Step 0: Sync certificates to server (so server can verify the proof)
       console.log("Syncing certificates to server...");
-      await syncCertificatesToServer();
+      const syncSuccess = await syncCertificatesToServer();
+
+      if (!syncSuccess) {
+        console.warn("Certificate sync failed - continuing anyway");
+      }
+
+      // Wait a moment for sync to propagate (important for Vercel serverless)
+      console.log("Waiting for sync to propagate...");
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
       // Step 1: Get or create user's Semaphore identity
       const identity = getOrCreateIdentity(user.id);
@@ -140,7 +148,15 @@ export function ProofVerification({
     try {
       // Sync certificates to server before verifying
       console.log("Syncing certificates to server...");
-      await syncCertificatesToServer();
+      const syncSuccess = await syncCertificatesToServer();
+
+      if (!syncSuccess) {
+        console.warn("Certificate sync failed - continuing anyway");
+      }
+
+      // Wait a moment for sync to propagate (important for Vercel serverless)
+      console.log("Waiting for sync to propagate...");
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
       console.log("Verifying proof...");
       console.log("Proof scope:", extractPublicSignals(proof).scope);

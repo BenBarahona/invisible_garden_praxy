@@ -121,38 +121,21 @@ export async function createMedicalProfessionalsGroupServer(): Promise<Group> {
 // ========================================
 // Group Root Cache (Server-Side)
 // ========================================
-
-interface CachedGroupServer {
-  root: bigint;
-  members: bigint[];
-  lastUpdated: number;
-}
-
-let cachedMedicalGroupServer: CachedGroupServer | null = null;
+// NOTE: In-memory cache is disabled in serverless environments to prevent
+// stale data across multiple function instances. Vercel KV is already fast enough.
 
 /**
- * Get the medical professionals group with caching (server-side)
+ * Get the medical professionals group (server-side)
+ * Always builds fresh from storage - no caching in serverless environment
  */
 export async function getMedicalProfessionalsGroupServer(): Promise<{
   group: Group;
   root: bigint;
 }> {
-  const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-  const now = Date.now();
+  console.log("[SERVER] Building group from storage");
   
-  // Return cached group if still valid
-  if (
-    cachedMedicalGroupServer &&
-    now - cachedMedicalGroupServer.lastUpdated < CACHE_DURATION
-  ) {
-    console.log("[SERVER] Using cached group");
-    const group = new Group(cachedMedicalGroupServer.members);
-    return { group, root: cachedMedicalGroupServer.root };
-  }
-  
-  console.log("[SERVER] Building new group from storage");
-  
-  // Rebuild group from storage
+  // Always rebuild group from storage to ensure consistency
+  // across multiple serverless function instances
   const commitments = await getAllApprovedCommitmentsServer();
   
   if (commitments.length === 0) {
@@ -161,14 +144,8 @@ export async function getMedicalProfessionalsGroupServer(): Promise<{
   
   const group = new Group(commitments);
   
-  // Cache it
-  cachedMedicalGroupServer = {
-    root: group.root,
-    members: commitments,
-    lastUpdated: now,
-  };
-  
-  console.log("[SERVER] Cached new group with root:", group.root.toString());
+  console.log("[SERVER] Built group with root:", group.root.toString());
+  console.log("[SERVER] Group has", commitments.length, "members");
   
   return { group, root: group.root };
 }
@@ -194,11 +171,12 @@ export async function getCurrentGroupRootServer(): Promise<bigint> {
 }
 
 /**
- * Invalidate the cache
+ * Invalidate the cache (no-op in serverless - kept for compatibility)
  */
 export function invalidateGroupCacheServer(): void {
-  cachedMedicalGroupServer = null;
-  console.log("[SERVER] Group cache invalidated");
+  // No-op: In serverless environments, there's no shared cache to invalidate
+  // Each function instance builds fresh from storage
+  console.log("[SERVER] Cache invalidation requested (no-op in serverless)");
 }
 
 /**
